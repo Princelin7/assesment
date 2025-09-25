@@ -1,4 +1,4 @@
-name: WiseCow CI/CD (Self-Hosted)
+name: build-and-deploy
 
 on:
   push:
@@ -7,29 +7,33 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted 
+    runs-on: self-hosted
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set timestamp
+        run: echo "TIMESTAMP=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
 
-    - name: Build Docker image
-      run: |
-        TIMESTAMP=$(date +%Y%m%d%H%M%S)
-        docker build -t princelinshiny/assessment:$TIMESTAMP .
-        docker tag princelinshiny/assessment:$TIMESTAMP princelinshiny/assessment:latest
+      - name: Build Docker image
+        run: docker build -t princelinshiny/assessment:${{ env.TIMESTAMP }} .
 
-    - name: Push Docker image
-      run: |
-        TIMESTAMP=$(date +%Y%m%d%H%M%S)
-        docker push princelinshiny/assessment:$TIMESTAMP
-        docker push princelinshiny/assessment:latest
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USER_NAME }}" --password-stdin
 
-    - name: Deploy to Minikube
-      run: |
-        kubectl create namespace wisecow --dry-run=client -o yaml | kubectl apply -f -
-        kubectl set image deployment/wisecow-deployment wisecow=princelinshiny/assessment:latest -n wisecow
-        kubectl rollout status deployment/wisecow-deployment -n wisecow
+      - name: Push Docker image
+        run: docker push princelinshiny/assessment:${{ env.TIMESTAMP }}
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+
+      - name: Create namespace if not exists
+        run: kubectl create namespace wisecow --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy to Kubernetes
+        run: |
+          sed "s|IMAGE_TAG|${{ env.TIMESTAMP }}|g" k8s/deployment.yaml | kubectl apply -n wisecow -f -
+          kubectl apply -n wisecow -f k8s/service.yaml
