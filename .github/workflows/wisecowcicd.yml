@@ -1,0 +1,35 @@
+name: WiseCow CI/CD (Self-Hosted)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted 
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Docker image
+      run: |
+        TIMESTAMP=$(date +%Y%m%d%H%M%S)
+        docker build -t princelinshiny/assessment:$TIMESTAMP .
+        docker tag princelinshiny/assessment:$TIMESTAMP princelinshiny/assessment:latest
+
+    - name: Push Docker image
+      run: |
+        TIMESTAMP=$(date +%Y%m%d%H%M%S)
+        docker push princelinshiny/assessment:$TIMESTAMP
+        docker push princelinshiny/assessment:latest
+
+    - name: Deploy to Minikube
+      run: |
+        kubectl create namespace wisecow --dry-run=client -o yaml | kubectl apply -f -
+        kubectl set image deployment/wisecow-deployment wisecow=princelinshiny/assessment:latest -n wisecow
+        kubectl rollout status deployment/wisecow-deployment -n wisecow
