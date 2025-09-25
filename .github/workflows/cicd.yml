@@ -1,0 +1,51 @@
+name: WiseCow CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  TIMESTAMP: ${{ github.run_id }}
+  DOCKER_IMAGE: princelinshiny/assessment
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Docker login
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build Docker image
+      run: |
+        docker build -t $DOCKER_IMAGE:$TIMESTAMP .
+        docker tag $DOCKER_IMAGE:$TIMESTAMP $DOCKER_IMAGE:latest
+
+    - name: Push Docker image
+      run: |
+        docker push $DOCKER_IMAGE:$TIMESTAMP
+        docker push $DOCKER_IMAGE:latest
+
+    - name: Set up kubeconfig
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+
+    - name: Ensure Kubernetes namespace exists
+      run: |
+        kubectl create namespace wisecow --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl set image deployment/wisecow-deployment wisecow=$DOCKER_IMAGE:latest -n wisecow
+        kubectl rollout status deployment/wisecow-deployment -n wisecow || kubectl rollout undo deployment/wisecow-deployment -n wisecow
