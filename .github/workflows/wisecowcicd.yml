@@ -35,5 +35,5 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: |
-          sed "s|IMAGE_TAG|${{ env.TIMESTAMP }}|g" k8s/deployment.yaml | kubectl apply -n wisecow -f -
-          kubectl apply -n wisecow -f k8s/service.yaml
+          sed "s|IMAGE_TAG|$TIMESTAMP|g" deployment.yaml | kubectl apply -n wisecow -f -
+          kubectl apply -n wisecow -f service.yaml
