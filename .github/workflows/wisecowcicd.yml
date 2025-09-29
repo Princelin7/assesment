@@ -30,6 +30,9 @@ jobs:
         run: |
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+          
+      - name: Test kubeconfig
+          run: kubectl get nodes
 
       - name: Update Deployment with new image
         run: |
