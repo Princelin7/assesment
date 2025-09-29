@@ -26,14 +26,10 @@ jobs:
         run: docker push princelinshiny/assessment:${{ env.TIMESTAMP }}
 
       - name: Set up kubeconfig
-        run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+        run: echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
 
-      - name: Create namespace if not exists
-        run: kubectl create namespace wisecow --dry-run=client -o yaml | kubectl apply -f -
-
-      - name: Deploy to Kubernetes
+      - name: Update Deployment with new image
         run: |
-          sed "s|IMAGE_TAG|$TIMESTAMP|g" deployment.yaml | kubectl apply -n wisecow -f -
-          kubectl apply -n wisecow -f service.yaml
+          kubectl set image deployment/wisecow-deployment \
+          wisecow=princelinshiny/assessment:${{ env.TIMESTAMP }}
+          kubectl rollout status deployment/wisecow-deployment
