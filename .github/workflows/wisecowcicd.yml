@@ -1,3 +1,4 @@
+
 name: build-and-deploy
 
 on:
@@ -26,10 +27,14 @@ jobs:
         run: docker push princelinshiny/assessment:${{ env.TIMESTAMP }}
 
       - name: Set up kubeconfig
-        run: echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" | base64 --decode > $HOME/.kube/config
 
       - name: Update Deployment with new image
         run: |
           kubectl set image deployment/wisecow-deployment \
           wisecow=princelinshiny/assessment:${{ env.TIMESTAMP }}
           kubectl rollout status deployment/wisecow-deployment
+
+
