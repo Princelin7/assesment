@@ -4,7 +4,7 @@
 cpu_limit=80
 mem_limit=80
 disk_limit=90
-process_name="nginx"   # change this if you want to watch another service
+process_name="nginx"  
 
 log_file="$HOME/system_health.log"
 now=$(date +"%Y-%m-%d %H:%M:%S")
